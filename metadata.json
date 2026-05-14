@@ -1,0 +1,7 @@
+{
+  "description": "Talk Tanglish - Tamil Speech to Text App",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "name": "Talk Tanglish"
+}
