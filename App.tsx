@@ -162,7 +162,20 @@ const App = () => {
   const animationFrameRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const getGeminiClient = () => {
+    // Check local env first (Vite), then fallback to standard process.env 
+    let apiKey = '';
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+      apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    } else if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+      apiKey = process.env.GEMINI_API_KEY;
+    }
+
+    if (!apiKey) {
+      throw new Error("API key is missing! Please check your .env file.");
+    }
+    return new GoogleGenAI({ apiKey });
+  };
 
   // Load history on mount
   useEffect(() => {
@@ -180,9 +193,9 @@ const App = () => {
   useEffect(() => {
     try {
       localStorage.setItem('tanglish_history', JSON.stringify(history));
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Storage error:", e);
-      if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      if (e instanceof Error && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
         // FIFO: Remove oldest 10 items to free up space
         setHistory(prev => prev.slice(0, Math.max(0, prev.length - 10)));
       }
@@ -450,7 +463,8 @@ const App = () => {
       if (mode === MODE_ENGLISH) systemInstruction = englishInstruction;
       if (mode === MODE_TAMIL) systemInstruction = tamilInstruction;
 
-      const response = await ai.models.generateContent({
+      const aiClient = getGeminiClient();
+      const response = await aiClient.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: {
           role: 'user',
@@ -497,6 +511,7 @@ const App = () => {
 
     setIsProcessing(true);
     try {
+      const ai = getGeminiClient();
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Add relevant emojis to this text without changing words or grammar: "${text}"`,
@@ -543,7 +558,8 @@ const App = () => {
       if (mode === MODE_ENGLISH) systemInstruction = englishInstruction;
       if (mode === MODE_TAMIL) systemInstruction = tamilInstruction;
 
-      const response = await ai.models.generateContent({
+      const aiClient = getGeminiClient();
+      const response = await aiClient.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: text,
         config: {
